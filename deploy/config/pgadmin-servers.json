@@ -1,0 +1,14 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "FlashDoc PostgreSQL",
+      "Group": "FlashDoc",
+      "Host": "flashdoc_postgres",
+      "Port": 5432,
+      "MaintenanceDB": "flashdoc_prod",
+      "Username": "flashdoc_user",
+      "SSLMode": "prefer",
+      "Comment": "Base de données principale FlashDoc"
+    }
+  }
+}

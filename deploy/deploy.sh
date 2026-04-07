@@ -1,87 +1,95 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
-# FlashDoc — Script de déploiement VPS
-# Usage : bash deploy.sh
-# Prérequis : code pushé sur le VPS dans /opt/flashdoc/
+# FlashDoc — Script de déploiement initial sur le VPS
+# Usage : bash /opt/flashdoc/deploy/deploy.sh
 # ═══════════════════════════════════════════════════════════════
 
-set -e  # Stopper en cas d'erreur
-RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
+set -e
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'
 
-echo -e "${GREEN}🚀 Déploiement FlashDoc...${NC}"
+echo -e "${CYAN}"
+echo "  ███████╗██╗      █████╗ ███████╗██╗  ██╗██████╗  ██████╗  ██████╗"
+echo "  ██╔════╝██║     ██╔══██╗██╔════╝██║  ██║██╔══██╗██╔═══██╗██╔════╝"
+echo "  █████╗  ██║     ███████║███████╗███████║██║  ██║██║   ██║██║"
+echo "  ██╔══╝  ██║     ██╔══██║╚════██║██╔══██║██║  ██║██║   ██║██║"
+echo "  ██║     ███████╗██║  ██║███████║██║  ██║██████╔╝╚██████╔╝╚██████╗"
+echo "  ╚═╝     ╚══════╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═════╝  ╚═════╝  ╚═════╝"
+echo -e "${NC}"
+echo -e "${GREEN}🚀 Déploiement FlashDoc Production${NC}"
+echo ""
 
-# ── 1. Vérifications préliminaires ─────────────────────────────
-echo -e "\n${YELLOW}[1/7] Vérifications...${NC}"
+DEPLOY_DIR="/opt/flashdoc"
 
-if [ ! -f "/opt/flashdoc/.env" ]; then
-    echo -e "${RED}❌ Fichier .env manquant dans /opt/flashdoc/.env${NC}"
-    echo "   Copie .env.production vers /opt/flashdoc/.env et remplis les valeurs"
-    exit 1
-fi
+# ── 1. Vérifications ────────────────────────────────────────────
+echo -e "${YELLOW}[1/8] Vérifications préliminaires...${NC}"
 
-if [ ! -f "/opt/flashdoc/backend/Dockerfile" ]; then
-    echo -e "${RED}❌ Dockerfile manquant${NC}"
-    exit 1
-fi
+[ ! -f "$DEPLOY_DIR/.env" ] && \
+    echo -e "${RED}❌ .env manquant. Copie deploy/.env.production vers $DEPLOY_DIR/.env${NC}" && exit 1
 
-# ── 2. Créer dossiers nécessaires ──────────────────────────────
-echo -e "\n${YELLOW}[2/7] Création des dossiers...${NC}"
-mkdir -p /opt/flashdoc/backend/uploads/avatars
-chmod 755 /opt/flashdoc/backend/uploads/avatars
+[ ! -f "$DEPLOY_DIR/backend/Dockerfile" ] && \
+    echo -e "${RED}❌ Dockerfile manquant${NC}" && exit 1
+
+[ ! -f "$DEPLOY_DIR/deploy/config/pgadmin-servers.json" ] && \
+    echo -e "${RED}❌ pgadmin-servers.json manquant${NC}" && exit 1
+
+echo -e "${GREEN}✓ Fichiers présents${NC}"
+
+# ── 2. Dossiers ─────────────────────────────────────────────────
+echo -e "${YELLOW}[2/8] Création des dossiers...${NC}"
+mkdir -p "$DEPLOY_DIR/backend/uploads/avatars"
+chmod 755 "$DEPLOY_DIR/backend/uploads/avatars"
 echo -e "${GREEN}✓ Dossiers créés${NC}"
 
-# ── 3. Build de l'image Docker ─────────────────────────────────
-echo -e "\n${YELLOW}[3/7] Build de l'image backend...${NC}"
-cd /opt/flashdoc
+# ── 3. Build ────────────────────────────────────────────────────
+echo -e "${YELLOW}[3/8] Build de l'image backend...${NC}"
+cd "$DEPLOY_DIR"
 docker build -t flashdoc_backend:latest ./backend/
 echo -e "${GREEN}✓ Image buildée${NC}"
 
-# ── 4. Arrêter les anciens conteneurs ──────────────────────────
-echo -e "\n${YELLOW}[4/7] Arrêt des anciens conteneurs...${NC}"
-docker compose -f docker-compose.yml down --remove-orphans 2>/dev/null || true
-echo -e "${GREEN}✓ Anciens conteneurs arrêtés${NC}"
+# ── 4. Arrêt ancien ─────────────────────────────────────────────
+echo -e "${YELLOW}[4/8] Arrêt des anciens conteneurs...${NC}"
+docker compose -f deploy/docker-compose.yml down --remove-orphans 2>/dev/null || true
+echo -e "${GREEN}✓ Nettoyé${NC}"
 
-# ── 5. Démarrer les services ────────────────────────────────────
-echo -e "\n${YELLOW}[5/7] Démarrage des services...${NC}"
-docker compose -f docker-compose.yml up -d
+# ── 5. Démarrage ────────────────────────────────────────────────
+echo -e "${YELLOW}[5/8] Démarrage de tous les services...${NC}"
+docker compose -f deploy/docker-compose.yml --env-file .env up -d
 echo -e "${GREEN}✓ Services démarrés${NC}"
 
-# ── 6. Attendre que la DB soit prête ───────────────────────────
-echo -e "\n${YELLOW}[6/7] Attente de la base de données...${NC}"
-sleep 5
-MAX_TRIES=30
-TRIES=0
-until docker exec flashdoc_postgres pg_isready -U flashdoc_user -d flashdoc_prod > /dev/null 2>&1; do
-    TRIES=$((TRIES+1))
-    if [ $TRIES -ge $MAX_TRIES ]; then
-        echo -e "${RED}❌ La base de données ne répond pas${NC}"
-        docker compose logs flashdoc_postgres
-        exit 1
-    fi
-    echo "   En attente... ($TRIES/$MAX_TRIES)"
+# ── 6. Attente PostgreSQL ────────────────────────────────────────
+echo -e "${YELLOW}[6/8] Attente PostgreSQL...${NC}"
+MAX=30; COUNT=0
+until docker exec flashdoc_postgres pg_isready -U flashdoc_user > /dev/null 2>&1; do
+    COUNT=$((COUNT+1))
+    [ $COUNT -ge $MAX ] && echo -e "${RED}❌ PostgreSQL timeout${NC}" && \
+        docker compose -f deploy/docker-compose.yml logs flashdoc_postgres && exit 1
+    printf "."
     sleep 2
 done
-echo -e "${GREEN}✓ Base de données prête${NC}"
+echo -e "\n${GREEN}✓ PostgreSQL prêt${NC}"
 
-# ── 7. Vérification finale ─────────────────────────────────────
-echo -e "\n${YELLOW}[7/7] Vérification de l'API...${NC}"
-sleep 5
-HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5003/api/health)
-if [ "$HTTP_CODE" = "200" ]; then
-    echo -e "${GREEN}✓ API répond sur le port 5003${NC}"
+# ── 7. Health check API ──────────────────────────────────────────
+echo -e "${YELLOW}[7/8] Health check API...${NC}"
+sleep 8
+HTTP=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5003/api/health)
+if [ "$HTTP" = "200" ]; then
+    echo -e "${GREEN}✓ API opérationnelle${NC}"
 else
-    echo -e "${RED}❌ L'API ne répond pas (code: $HTTP_CODE)${NC}"
-    docker compose logs flashdoc_backend
+    echo -e "${RED}❌ API ne répond pas (HTTP $HTTP)${NC}"
+    docker compose -f deploy/docker-compose.yml logs --tail=40 flashdoc_backend
     exit 1
 fi
 
-echo -e "\n${GREEN}════════════════════════════════════════${NC}"
-echo -e "${GREEN}✅ FlashDoc déployé avec succès !${NC}"
-echo -e "${GREEN}════════════════════════════════════════${NC}"
+# ── 8. Résumé ───────────────────────────────────────────────────
 echo ""
-echo "  Backend  : http://localhost:5003/api/health"
-echo "  API HTTPS: https://api.flashdoc.tchoukheadcorp.net/api/health"
+echo -e "${GREEN}════════════════════════════════════════════════════${NC}"
+echo -e "${GREEN}  ✅ FlashDoc déployé avec succès !${NC}"
+echo -e "${GREEN}════════════════════════════════════════════════════${NC}"
 echo ""
-echo "  Logs    : docker compose logs -f flashdoc_backend"
-echo "  Status  : docker compose ps"
+echo -e "  ${CYAN}API         ${NC}: https://api.flashdoc.tchoukheadcorp.net"
+echo -e "  ${CYAN}pgAdmin     ${NC}: https://pgadmin.flashdoc.tchoukheadcorp.net"
+echo -e "  ${CYAN}RedisInsight${NC}: https://redis.flashdoc.tchoukheadcorp.net"
+echo ""
+echo -e "  ${YELLOW}Logs    ${NC}: docker compose -f deploy/docker-compose.yml logs -f"
+echo -e "  ${YELLOW}Status  ${NC}: docker compose -f deploy/docker-compose.yml ps"
 echo ""
