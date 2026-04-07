@@ -1,31 +1,26 @@
-# ── Dockerfile backend FlashDoc ───────────────────────────────
-# Doit être placé dans : backend/Dockerfile
-
+# ── Dockerfile backend FlashDoc ─────────────────────────────
 FROM node:20-alpine
 
-# Dépendances système pour Prisma
-RUN apk add --no-cache openssl
+# Dépendances système (openssl pour Prisma, wget+curl pour healthcheck)
+RUN apk add --no-cache openssl wget curl
 
 WORKDIR /app
 
-# Copier les fichiers de dépendances
+# Dépendances Node
 COPY package*.json ./
 COPY prisma ./prisma/
-
-# Installer les dépendances production uniquement
 RUN npm ci --only=production
 
 # Générer le client Prisma
 RUN npx prisma generate
 
-# Copier le code source
+# Code source
 COPY src ./src/
 
-# Créer le dossier uploads
+# Dossier uploads avatars
 RUN mkdir -p /app/uploads/avatars
 
-# Exposer le port
 EXPOSE 3000
 
-# Script de démarrage : migration + lancement
-CMD ["sh", "-c", "npx prisma migrate deploy && node src/index.js"]
+# Démarrage : db push + serveur
+CMD ["sh", "-c", "npx prisma db push --accept-data-loss && node src/index.js"]
