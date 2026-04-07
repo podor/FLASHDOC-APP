@@ -21,6 +21,10 @@ const logger             = require('./utils/logger');
 
 const app = express();
 
+// ✅ Trust proxy — obligatoire quand derrière Nginx
+// Permet à express-rate-limit de lire correctement X-Forwarded-For
+app.set('trust proxy', 1);
+
 // ── Sécurité ────────────────────────────────────────────────────
 app.use(helmet());
 
