@@ -1,0 +1,33 @@
+# Dépendances
+node_modules/
+
+# Variables d'environnement (NE JAMAIS committer .env)
+.env
+.env.local
+.env.production
+
+# Logs
+logs/
+*.log
+
+# Uploads (fichiers utilisateurs)
+uploads/
+
+# Prisma
+prisma/migrations/
+
+# Build
+dist/
+build/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Tests
+coverage/

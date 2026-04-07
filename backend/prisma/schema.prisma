@@ -1,0 +1,288 @@
+// This is your Prisma schema file — base de données complète FlashDoc
+// Documentation: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  PATIENT
+  DOCTOR
+  ADMIN
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  BANNED
+}
+
+model User {
+  id          String     @id @default(uuid())
+  phone       String     @unique
+  email       String?    @unique
+  password    String
+  role        UserRole
+  status      UserStatus @default(PENDING)
+  firstName   String
+  lastName    String
+  avatarUrl   String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  patient     Patient?
+  doctor      Doctor?
+  otpCodes    OtpCode[]
+
+  @@map("users")
+}
+
+model OtpCode {
+  id        String   @id @default(uuid())
+  userId    String
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("otp_codes")
+}
+
+model Patient {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  birthDate     DateTime?
+  gender        String?
+  bloodType     String?
+  allergies     String[]
+  city          String?
+  walletBalance Float    @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  consultations Consultation[]
+  transactions  Transaction[]
+
+  @@map("patients")
+}
+
+enum DoctorStatus {
+  PENDING_DOCS
+  PENDING_REVIEW
+  PENDING_INTERVIEW
+  APPROVED
+  SUSPENDED
+  BANNED
+}
+
+model Doctor {
+  id            String       @id @default(uuid())
+  userId        String       @unique
+  speciality    String
+  onmcNumber    String       @unique
+  diplomaUrl    String?
+  licenseUrl    String?
+  bio           String?
+  city          String?
+  languages     String[]     @default(["fr"])
+  status        DoctorStatus @default(PENDING_DOCS)
+  isAvailable   Boolean      @default(false)
+  averageRating Float        @default(0)
+  totalConsults Int          @default(0)
+  walletBalance Float        @default(0)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  consultations Consultation[]
+  transactions  Transaction[]
+  ratings       Rating[]
+  schedules     Schedule[]
+
+  @@map("doctors")
+}
+
+model Schedule {
+  id        String  @id @default(uuid())
+  doctorId  String
+  dayOfWeek Int
+  startTime String
+  endTime   String
+  isActive  Boolean @default(true)
+
+  doctor    Doctor  @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
+  @@map("schedules")
+}
+
+enum ConsultationStatus {
+  PENDING_PAYMENT
+  WAITING_DOCTOR
+  MATCHED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  EXPIRED
+  REFERRED
+  SCHEDULED
+}
+
+enum ConsultationMode {
+  CHAT
+  AUDIO
+  VIDEO
+}
+
+enum ConsultationType {
+  IMMEDIATE
+  APPOINTMENT
+}
+
+model Consultation {
+  id                String             @id @default(uuid())
+  patientId         String
+  doctorId          String?
+  status            ConsultationStatus @default(PENDING_PAYMENT)
+  mode              ConsultationMode
+  type              ConsultationType   @default(IMMEDIATE)
+  speciality        String?
+  symptomsText      String?
+  symptomsAudioUrl  String?
+  symptomsImageUrls String[]
+  totalAmount       Float
+  platformFee       Float?
+  doctorAmount      Float?
+  scheduledAt       DateTime?
+  startedAt         DateTime?
+  endedAt           DateTime?
+  durationMinutes   Int?
+  roomId            String?
+  prescriptionUrl   String?
+  // ✅ Données ordonnance structurées (hash, médicaments, QR code)
+  prescription      Json?
+  notes             String?
+  referralDoctorId  String?
+  referralDiscount  Float?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  patient     Patient      @relation(fields: [patientId], references: [id])
+  doctor      Doctor?      @relation(fields: [doctorId], references: [id])
+  payment     Payment?
+  rating      Rating?
+  messages    Message[]
+
+  @@map("consultations")
+}
+
+enum MessageSender {
+  PATIENT
+  DOCTOR
+  SYSTEM
+}
+
+model Message {
+  id             String        @id @default(uuid())
+  consultationId String
+  sender         MessageSender
+  content        String?
+  fileUrl        String?
+  createdAt      DateTime      @default(now())
+
+  consultation   Consultation  @relation(fields: [consultationId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}
+
+enum PaymentProvider {
+  ORANGE_MONEY
+  MTN_MOMO
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+model Payment {
+  id             String          @id @default(uuid())
+  consultationId String          @unique
+  patientId      String
+  provider       PaymentProvider
+  amount         Float
+  currency       String          @default("XAF")
+  status         PaymentStatus   @default(PENDING)
+  providerTxId   String?
+  providerRef    String?
+  failureReason  String?
+  paidAt         DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  consultation   Consultation    @relation(fields: [consultationId], references: [id])
+
+  @@map("payments")
+}
+
+enum TransactionType {
+  CREDIT_CONSULTATION
+  WITHDRAWAL
+  REFUND
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+model Transaction {
+  id        String            @id @default(uuid())
+  doctorId  String?
+  patientId String?
+  type      TransactionType
+  amount    Float
+  status    TransactionStatus @default(PENDING)
+  reference String?
+  metadata  Json?
+  createdAt DateTime          @default(now())
+
+  doctor    Doctor?  @relation(fields: [doctorId], references: [id])
+  patient   Patient? @relation(fields: [patientId], references: [id])
+
+  @@map("transactions")
+}
+
+model Rating {
+  id             String   @id @default(uuid())
+  consultationId String   @unique
+  doctorId       String
+  score          Int
+  comment        String?
+  createdAt      DateTime @default(now())
+
+  consultation   Consultation @relation(fields: [consultationId], references: [id])
+  doctor         Doctor       @relation(fields: [doctorId], references: [id])
+
+  @@map("ratings")
+}
+
+model Speciality {
+  id          String @id @default(uuid())
+  name        String @unique
+  description String?
+  iconName    String?
+
+  @@map("specialities")
+}

@@ -1,0 +1,22 @@
+// Nouvelles routes à ajouter dans router.dart
+// Ajouter ces imports :
+// import '../features/appointments/appointment_screen.dart';
+// import '../features/prescriptions/prescriptions_screen.dart';
+// import '../features/doctor/prescription/prescription_screen.dart';
+
+// Routes à ajouter dans la section PATIENT :
+//   GoRoute(path: '/patient/appointments', builder: (_, __) => const AppointmentScreen()),
+//   GoRoute(path: '/patient/prescriptions', builder: (_, __) => const PrescriptionsScreen()),
+
+// Routes à ajouter dans la section DOCTOR :
+//   GoRoute(
+//     path: '/doctor/prescription',
+//     builder: (_, state) {
+//       final extra = state.extra as Map<String, dynamic>? ?? {};
+//       return PrescriptionScreen(
+//         consultationId: extra['consultationId'] as String? ?? '',
+//         patientName:    extra['patientName']    as String? ?? '',
+//         patientId:      extra['patientId']      as String? ?? '',
+//       );
+//     },
+//   ),

@@ -1,0 +1,94 @@
+version: '3.8'
+
+# ═══════════════════════════════════════════════════════════════
+# FlashDoc — Docker Compose Production
+# Réseau isolé : flashdoc_network (n'interfère pas avec les autres apps)
+# Ports : backend=5003, postgres=5433 (interne seulement)
+# ═══════════════════════════════════════════════════════════════
+
+services:
+
+  # ── Base de données PostgreSQL dédiée FlashDoc ─────────────────
+  flashdoc_postgres:
+    image: postgres:15-alpine
+    container_name: flashdoc_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       ${POSTGRES_DB}
+      POSTGRES_USER:     ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - flashdoc_postgres_data:/var/lib/postgresql/data
+    networks:
+      - flashdoc_network
+    # ⚠️ Port non exposé sur le host — accessible uniquement via le réseau Docker
+    # Si tu veux accéder via adminer depuis l'extérieur, décommente la ligne suivante :
+    # ports:
+    #   - "127.0.0.1:5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Backend Node.js FlashDoc ──────────────────────────────────
+  flashdoc_backend:
+    image: flashdoc_backend:latest
+    container_name: flashdoc_backend
+    restart: unless-stopped
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "0.0.0.0:5003:3000"
+    environment:
+      NODE_ENV:            production
+      PORT:                3000
+      DATABASE_URL:        postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@flashdoc_postgres:5432/${POSTGRES_DB}
+      JWT_SECRET:          ${JWT_SECRET}
+      JWT_EXPIRES_IN:      ${JWT_EXPIRES_IN}
+      REFRESH_TOKEN_SECRET: ${REFRESH_TOKEN_SECRET}
+      REDIS_URL:           ${REDIS_URL}
+      PLATFORM_COMMISSION_RATE: ${PLATFORM_COMMISSION_RATE}
+      DISPATCH_TIMEOUT_SECONDS: ${DISPATCH_TIMEOUT_SECONDS}
+      ALLOWED_ORIGINS:     ${ALLOWED_ORIGINS}
+      BASE_URL:            ${BASE_URL}
+      UPLOAD_PATH:         /app/uploads/avatars
+    volumes:
+      - flashdoc_uploads:/app/uploads
+    networks:
+      - flashdoc_network
+    depends_on:
+      flashdoc_postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── Redis pour les locks socket ────────────────────────────────
+  flashdoc_redis:
+    image: redis:7-alpine
+    container_name: flashdoc_redis
+    restart: unless-stopped
+    networks:
+      - flashdoc_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+# ── Volumes isolés FlashDoc ────────────────────────────────────
+volumes:
+  flashdoc_postgres_data:
+    name: flashdoc_postgres_data
+  flashdoc_uploads:
+    name: flashdoc_uploads
+
+# ── Réseau isolé — ne touche pas aux autres apps ───────────────
+networks:
+  flashdoc_network:
+    name: flashdoc_network
+    driver: bridge
