@@ -8,13 +8,13 @@ class AppConstants {
   // Les deux téléphones utilisent adb reverse tcp:3000 tcp:3000
   // ce qui redirige localhost:3000 du téléphone vers le PC via USB
   static String get baseUrl {
-    if (kIsWeb) return 'http://localhost:3000/api';
-    return 'http://localhost:3000/api';
+    if (kIsWeb) return 'https://api.flashdoc.tchoukheadcorp.net/api';
+    return 'https://api.flashdoc.tchoukheadcorp.net/api';
   }
 
   static String get socketUrl {
-    if (kIsWeb) return 'http://localhost:3000';
-    return 'http://localhost:3000';
+    if (kIsWeb) return 'https://api.flashdoc.tchoukheadcorp.net';
+    return 'https://api.flashdoc.tchoukheadcorp.net';
   }
 
   // ── Timeouts ─────────────────────────────────────────────────────
