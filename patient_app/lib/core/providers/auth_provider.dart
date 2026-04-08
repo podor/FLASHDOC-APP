@@ -169,6 +169,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  /// Met à jour l'avatarUrl dans le state ET dans le storage
+  Future<void> updateAvatarUrl(String newAvatarUrl) async {
+    if (state.user == null) return;
+    final updatedUser = state.user!.copyWith(avatarUrl: newAvatarUrl);
+    await _storage.saveUser(updatedUser);
+    state = state.copyWith(user: updatedUser);
+  }
+
   Future<void> logout() async {
     SocketService().disconnect();
     await _storage.clearAll();

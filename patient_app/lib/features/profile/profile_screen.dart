@@ -431,7 +431,12 @@ class _ProfileBody extends ConsumerWidget {
         source: source, maxWidth: 800, maxHeight: 800, imageQuality: 85);
       if (picked == null) return;
       if (context.mounted) FdSnackbar.show(context, 'Upload en cours...');
-      await ApiService().uploadProfilePhoto(picked.path);
+      final res = await ApiService().uploadProfilePhoto(picked.path);
+      // ✅ Mettre à jour authProvider avec le nouvel avatarUrl
+      final newUrl = res['data']?['avatarUrl'] as String?;
+      if (newUrl != null) {
+        await ref.read(authProvider.notifier).updateAvatarUrl(newUrl);
+      }
       ref.invalidate(patientProfileProvider);
       if (context.mounted) FdSnackbar.show(context, 'Photo mise à jour ✓');
     } catch (e) {
@@ -652,37 +657,48 @@ class _ProfileBody extends ConsumerWidget {
 // ─────────────────────────────────────────────────────────────────
 // HEADER
 // ─────────────────────────────────────────────────────────────────
-class _ProfileHeader extends StatelessWidget {
+class _ProfileHeader extends ConsumerWidget {
   final _PatientProfile? profile;
   final VoidCallback onChangePhoto;
   const _ProfileHeader({required this.profile, required this.onChangePhoto});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // ✅ avatarUrl depuis authProvider — réactif après upload
+    final authUrl = ref.watch(authProvider).user?.avatarUrl;
+    final avatarUrl = (authUrl?.isNotEmpty == true) ? authUrl : profile?.avatarUrl;
+    final hasPhoto = avatarUrl != null && avatarUrl.isNotEmpty;
     return Container(
       decoration: const BoxDecoration(gradient: AppColors.primaryGradient),
-      // ✅ padding ajusté pour éviter overflow (top: 88, bottom: 12)
       padding: const EdgeInsets.only(top: 88, bottom: 12),
       child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
         GestureDetector(
           onTap: onChangePhoto,
           child: Stack(alignment: Alignment.bottomRight, children: [
-            CircleAvatar(
-              radius: 48,
-              backgroundColor: Colors.white.withOpacity(0.2),
-              // ✅ Afficher la vraie photo si disponible, sinon les initiales
-              backgroundImage: (profile?.avatarUrl != null &&
-                      profile!.avatarUrl!.isNotEmpty)
-                  ? NetworkImage(profile!.avatarUrl!)
-                  : null,
-              child: (profile?.avatarUrl == null ||
-                      profile!.avatarUrl!.isEmpty)
-                  ? Text(profile?.initials ?? '?',
-                      style: const TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white))
-                  : null,
+            Container(
+              width: 96, height: 96,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 3)),
+              child: ClipOval(child: hasPhoto
+                  ? Image.network(
+                      avatarUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        color: Colors.white.withOpacity(0.2),
+                        child: Center(child: Text(profile?.initials ?? '?',
+                          style: const TextStyle(fontSize: 32,
+                              fontWeight: FontWeight.w700, color: Colors.white)))),
+                      loadingBuilder: (_, child, p) => p == null ? child
+                          : Container(color: Colors.white.withOpacity(0.2),
+                              child: const Center(child: CircularProgressIndicator(
+                                  color: Colors.white, strokeWidth: 2))),
+                    )
+                  : Container(
+                      color: Colors.white.withOpacity(0.2),
+                      child: Center(child: Text(profile?.initials ?? '?',
+                        style: const TextStyle(fontSize: 32,
+                            fontWeight: FontWeight.w700, color: Colors.white))))),
             ),
             Container(padding: const EdgeInsets.all(6),
               decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
