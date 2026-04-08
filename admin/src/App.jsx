@@ -236,19 +236,10 @@ function Dashboard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    Promise.all([
-      apiGet('/admin/stats').catch(() => null),
-      apiGet('/admin/doctors').catch(() => ({ data: { doctors: [] } })),
-      apiGet('/admin/patients').catch(() => ({ data: { patients: [] } })),
-      apiGet('/admin/consultations').catch(() => ({ data: { consultations: [] } })),
-    ]).then(([s, d, p, c]) => {
-      setStats({
-        doctors:       d?.data?.doctors?.length || 0,
-        pendingDocs:   d?.data?.doctors?.filter(x => x.status === 'PENDING_REVIEW').length || 0,
-        patients:      p?.data?.patients?.length || 0,
-        consultations: c?.data?.consultations?.length || 0,
-      })
-    }).finally(() => setLoading(false))
+    apiGet('/admin/stats')
+      .then(r => setStats(r.data))
+      .catch(() => {})
+      .finally(() => setLoading(false))
   }, [])
 
   if (loading) return <Loading />
@@ -260,17 +251,17 @@ function Dashboard() {
       </h1>
 
       <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
-        <Stat label="Médecins affiliés"    value={stats?.doctors || 0}
+        <Stat label="Médecins affiliés"    value={stats?.totalDoctors || 0}
           color={C.doctor}  icon="🩺" />
-        <Stat label="Dossiers à traiter"   value={stats?.pendingDocs || 0}
+        <Stat label="Dossiers à traiter"   value={stats?.pendingDoctors || 0}
           color={C.warning} icon="📋" />
-        <Stat label="Patients inscrits"    value={stats?.patients || 0}
+        <Stat label="Patients inscrits"    value={stats?.totalUsers || 0}
           color={C.primary} icon="👤" />
-        <Stat label="Consultations totales" value={stats?.consultations || 0}
+        <Stat label="Consultations totales" value={stats?.totalConsultations || 0}
           color="#8B5CF6"   icon="💬" />
       </div>
 
-      {stats?.pendingDocs > 0 && (
+      {stats?.pendingDoctors > 0 && (
         <Card style={{ background: '#FEF3C7', border: `1px solid ${C.warning}` }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <span style={{ fontSize: 24 }}>⚠️</span>
