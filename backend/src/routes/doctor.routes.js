@@ -12,9 +12,7 @@ const prisma   = require('../config/database');
 const response = require('../utils/response');
 
 // ── Config multer pour documents médecin ───────────────────────
-const docsDir = process.env.UPLOAD_PATH
-  ? process.env.UPLOAD_PATH.replace('avatars', 'doctor-docs')
-  : './uploads/doctor-docs';
+const docsDir = path.join(process.env.UPLOAD_PATH || './uploads', 'doctor-docs');
 if (!fs.existsSync(docsDir)) fs.mkdirSync(docsDir, { recursive: true });
 
 const docStorage = multer.diskStorage({
@@ -84,8 +82,7 @@ router.post('/me/documents',
     const urls = {};
     for (const [field, fileArr] of Object.entries(files)) {
       if (fileArr && fileArr[0]) {
-        const subdir = docsDir.includes('doctor-docs') ? 'doctor-docs' : 'avatars';
-        urls[field] = `${baseUrl}/uploads/${subdir}/${fileArr[0].filename}`;
+        urls[field] = `${baseUrl}/uploads/doctor-docs/${fileArr[0].filename}`;
       }
     }
 

@@ -58,8 +58,9 @@ app.use(morgan('combined', {
   stream: { write: (msg) => logger.http(msg.trim()) },
 }));
 
-// ── Fichiers statiques (avatars uploadés) ────────────────────────
-app.use('/uploads', express.static(process.env.UPLOAD_PATH || './uploads'));
+// ── Fichiers statiques (avatars + documents uploadés) ──────────────────
+// Sert /uploads/avatars/* et /uploads/doctor-docs/*
+app.use('/uploads', express.static('/app/uploads'));
 
 // ── Health check ─────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {

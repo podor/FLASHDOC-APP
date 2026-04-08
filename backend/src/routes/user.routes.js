@@ -11,7 +11,7 @@ const { asyncHandler } = require('../middleware/error.middleware');
 router.use(authenticate);
 
 // ── Config multer — stockage local ─────────────────────────────
-const uploadDir = process.env.UPLOAD_PATH || './uploads/avatars';
+const uploadDir = path.join(process.env.UPLOAD_PATH || './uploads', 'avatars');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
 const storage = multer.diskStorage({
