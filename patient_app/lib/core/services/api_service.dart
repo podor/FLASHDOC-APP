@@ -239,6 +239,35 @@ class ApiService {
     return res.data;
   }
 
+  // ── ENRÔLEMENT MÉDECIN ──────────────────────────────────────────
+  Future<Map<String, dynamic>> submitDoctorApplication({
+    required Map<String, dynamic> dossier,
+  }) async {
+    final res = await _dio.post('/doctors/apply', data: dossier);
+    return res.data;
+  }
+
+  Future<Map<String, dynamic>> getDoctorApplicationStatus() async {
+    final res = await _dio.get('/doctors/application/status');
+    return res.data;
+  }
+
+  /// Upload des documents d'affiliation médecin
+  /// [files] : map fieldName → chemin local du fichier
+  /// Ex: {'diplome': '/path/diplome.jpg', 'onmc': '/path/carte.jpg'}
+  Future<Map<String, dynamic>> uploadDoctorDocuments(
+      Map<String, String> files) async {
+    final formData = FormData();
+    for (final entry in files.entries) {
+      formData.files.add(MapEntry(
+        entry.key,
+        await MultipartFile.fromFile(entry.value),
+      ));
+    }
+    final res = await _dio.post('/doctors/me/documents', data: formData);
+    return res.data;
+  }
+
   // ── PHOTO PROFIL ─────────────────────────────────────────────────
   Future<Map<String, dynamic>> uploadProfilePhoto(String filePath) async {
     final formData = FormData.fromMap({

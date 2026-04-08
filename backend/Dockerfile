@@ -17,8 +17,8 @@ RUN npx prisma generate
 # Code source
 COPY src ./src/
 
-# Dossier uploads avatars
-RUN mkdir -p /app/uploads/avatars
+# Dossiers uploads
+RUN mkdir -p /app/uploads/avatars /app/uploads/doctor-docs
 
 EXPOSE 3000
 
