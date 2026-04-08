@@ -79,17 +79,24 @@ const applyDoctor = asyncHandler(async (req, res) => {
   } = req.body;
 
   // Vérifier si un dossier existe déjà
+  // ✅ Autoriser la mise à jour même si APPROVED (modification du profil)
+  // Bloquer uniquement si SUSPENDED ou BANNED
   const existing = await prisma.doctor.findUnique({ where: { userId: req.user.id } });
-  if (existing && !['PENDING_DOCS', 'PENDING_REVIEW'].includes(existing.status)) {
-    return response.badRequest(res, `Dossier déjà en traitement (statut: ${existing.status}).`);
+  if (existing && ['SUSPENDED', 'BANNED'].includes(existing.status)) {
+    return response.badRequest(res, `Compte ${existing.status === 'SUSPENDED' ? 'suspendu' : 'radié'}. Contactez le support.`);
   }
+
+  // Déterminer le nouveau statut
+  // Si déjà APPROVED, garder APPROVED (mise à jour du profil)
+  // Sinon passer à PENDING_REVIEW
+  const newStatus = (existing?.status === 'APPROVED') ? 'APPROVED' : 'PENDING_REVIEW';
 
   const doctor = await prisma.doctor.upsert({
     where:  { userId: req.user.id },
     update: {
       speciality, onmcNumber, bio, city,
       languages: languages || ['fr'],
-      status: 'PENDING_REVIEW',
+      status: newStatus,
     },
     create: {
       userId: req.user.id,
@@ -99,8 +106,11 @@ const applyDoctor = asyncHandler(async (req, res) => {
     },
   });
 
-  return response.success(res, { doctor },
-    'Dossier soumis avec succès. Notre équipe va vérifier vos documents sous 24-48h.');
+  const msg = newStatus === 'APPROVED'
+    ? 'Profil mis à jour avec succès.'
+    : 'Dossier soumis avec succès. Notre équipe va vérifier vos documents sous 24-48h.';
+
+  return response.success(res, { doctor }, msg);
 });
 
 // GET /api/doctors/application/status — Statut du dossier du médecin connecté
