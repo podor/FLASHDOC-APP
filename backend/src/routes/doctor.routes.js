@@ -97,7 +97,8 @@ router.post('/me/documents',
     const updateData = {};
     if (urls.diplome)    updateData.diplomaUrl  = urls.diplome;
     if (urls.onmc)       updateData.licenseUrl  = urls.onmc;
-    if (urls.specialite) updateData.specialtyDiplomaUrl = urls.specialite;
+    // specialtyDiplomaUrl n'existe pas dans le schema — on le stocke dans licenseUrl si spécialiste
+    // if (urls.specialite) updateData.specialtyDiplomaUrl = urls.specialite;
 
     // Upsert du dossier médecin avec les URLs des documents
     await prisma.doctor.upsert({
