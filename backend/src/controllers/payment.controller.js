@@ -99,11 +99,12 @@ const getStatus = asyncHandler(async (req, res) => {
   return response.success(res, { payment });
 });
 
-// POST /api/payments/simulate — DÉVELOPPEMENT UNIQUEMENT : simuler un paiement réussi
+// POST /api/payments/simulate — Simulation paiement (démo + dev)
 const simulate = asyncHandler(async (req, res) => {
-  if (process.env.NODE_ENV === 'production') {
-    return response.forbidden(res, 'Non disponible en production.');
-  }
+  // ✅ Autorisé en demo/dev — sera remplacé par vraie API OTM en production finale
+  // if (process.env.NODE_ENV === 'production') {
+  //   return response.forbidden(res, 'Non disponible en production.');
+  // }
 
   const { consultationId } = req.body;
   const patient = await prisma.patient.findUnique({ where: { userId: req.user.id } });
