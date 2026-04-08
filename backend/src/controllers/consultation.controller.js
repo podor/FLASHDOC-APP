@@ -130,8 +130,10 @@ const rate = asyncHandler(async (req, res) => {
   const { score, comment } = req.body;
   const patient = await prisma.patient.findUnique({ where: { userId: req.user.id } });
 
+  // ✅ Autoriser la notation si consultation IN_PROGRESS ou COMPLETED
   const consultation = await prisma.consultation.findFirst({
-    where: { id: req.params.id, patientId: patient.id, status: 'COMPLETED' },
+    where: { id: req.params.id, patientId: patient.id,
+      status: { in: ['IN_PROGRESS', 'COMPLETED'] } },
   });
   if (!consultation) return response.notFound(res, 'Consultation introuvable ou non terminée.');
 

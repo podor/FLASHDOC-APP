@@ -32,6 +32,7 @@ import '../features/doctor/profile/doctor_profile_screen.dart';
 import '../features/doctor/onboarding/doctor_onboarding_screen.dart';
 import '../features/doctor/screens/patient_connected_screen.dart';
 import '../features/doctor/prescription/prescription_screen.dart';
+import '../features/doctor/screens/application_status_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
@@ -150,7 +151,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/doctor/requests', builder: (_, __) => const DoctorRequestsScreen()),
       GoRoute(path: '/doctor/wallet',   builder: (_, __) => const DoctorWalletScreen()),
       GoRoute(path: '/doctor/profile',  builder: (_, __) => const DoctorProfileScreen()),
-      GoRoute(path: '/doctor/onboarding', builder: (_, __) => const DoctorOnboardingScreen()),
+      GoRoute(path: '/doctor/onboarding',         builder: (_, __) => const DoctorOnboardingScreen()),
+      GoRoute(path: '/doctor/application-status',  builder: (_, __) => const ApplicationStatusScreen()),
 
       GoRoute(path: '/doctor/patient-connected',
         builder: (_, state) {

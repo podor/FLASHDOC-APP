@@ -68,6 +68,21 @@ class DoctorProfileScreen extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(children: [
+              _Section(title: 'Mon dossier FlashDoc', items: [
+                _MenuItem(
+                  icon: Icons.folder_special_outlined,
+                  label: 'Statut de mon dossier',
+                  value: 'Voir l\'avancement',
+                  onTap: () => context.push('/doctor/application-status'),
+                  color: AppColors.doctorPrimary,
+                ),
+                _MenuItem(
+                  icon: Icons.edit_document,
+                  label: 'Modifier mon dossier',
+                  onTap: () => context.push('/doctor/onboarding'),
+                ),
+              ]),
+              const SizedBox(height: 12),
               _Section(title: 'Informations professionnelles', items: [
                 _MenuItem(icon: Icons.badge_outlined,
                     label: 'Numéro ONMC', value: 'Non renseigné', onTap: () {}),
@@ -155,17 +170,19 @@ class _MenuItem extends StatelessWidget {
   final String label;
   final String? value;
   final VoidCallback onTap;
+  final Color? color;
   const _MenuItem({required this.icon, required this.label,
-      this.value, required this.onTap});
+      this.value, required this.onTap, this.color});
   @override
   Widget build(BuildContext context) {
+    final c = color ?? AppColors.doctorPrimary;
     return ListTile(
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-            color: AppColors.doctorPrimary.withOpacity(0.1),
+            color: c.withOpacity(0.1),
             borderRadius: BorderRadius.circular(8)),
-        child: Icon(icon, color: AppColors.doctorPrimary, size: 18),
+        child: Icon(icon, color: c, size: 18),
       ),
       title: Text(label, style: const TextStyle(fontSize: 14,
           fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
