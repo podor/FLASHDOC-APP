@@ -71,23 +71,72 @@ const updateMe = asyncHandler(async (req, res) => {
   return response.success(res, { doctor }, 'Profil mis à jour.');
 });
 
-// POST /api/doctors/register — Soumission dossier d'affiliation médecin
-const registerDoctor = asyncHandler(async (req, res) => {
-  const { speciality, onmcNumber, bio, city, languages } = req.body;
+// POST /api/doctors/apply — Soumission dossier d'affiliation médecin (onboarding complet)
+const applyDoctor = asyncHandler(async (req, res) => {
+  const {
+    speciality, onmcNumber, bio, city, languages,
+    hospital, experience, availableDays, startTime, endTime, consultationsPerDay,
+  } = req.body;
 
+  // Vérifier si un dossier existe déjà
   const existing = await prisma.doctor.findUnique({ where: { userId: req.user.id } });
-  if (existing && existing.status !== 'PENDING_DOCS') {
-    return response.badRequest(res, 'Dossier déjà soumis.');
+  if (existing && !['PENDING_DOCS', 'PENDING_REVIEW'].includes(existing.status)) {
+    return response.badRequest(res, `Dossier déjà en traitement (statut: ${existing.status}).`);
   }
 
   const doctor = await prisma.doctor.upsert({
     where:  { userId: req.user.id },
-    update: { speciality, onmcNumber, bio, city, languages, status: 'PENDING_REVIEW' },
-    create: { userId: req.user.id, speciality, onmcNumber, bio, city, languages: languages || ['fr'], status: 'PENDING_REVIEW' },
+    update: {
+      speciality, onmcNumber, bio, city,
+      languages: languages || ['fr'],
+      status: 'PENDING_REVIEW',
+    },
+    create: {
+      userId: req.user.id,
+      speciality, onmcNumber, bio, city,
+      languages: languages || ['fr'],
+      status: 'PENDING_REVIEW',
+    },
   });
 
-  return response.success(res, { doctor }, 'Dossier soumis. Vérification ONMC en cours.');
+  return response.success(res, { doctor },
+    'Dossier soumis avec succès. Notre équipe va vérifier vos documents sous 24-48h.');
 });
+
+// GET /api/doctors/application/status — Statut du dossier du médecin connecté
+const getApplicationStatus = asyncHandler(async (req, res) => {
+  const doctor = await prisma.doctor.findUnique({
+    where: { userId: req.user.id },
+    select: {
+      id: true, status: true, speciality: true, onmcNumber: true,
+      createdAt: true, updatedAt: true,
+    },
+  });
+
+  if (!doctor) {
+    return response.success(res, { status: 'NOT_SUBMITTED', message: 'Aucun dossier soumis.' });
+  }
+
+  const statusMessages = {
+    PENDING_DOCS:      'Documents manquants — veuillez compléter votre dossier.',
+    PENDING_REVIEW:    'Dossier en cours d\'examen par notre équipe (24-48h).',
+    PENDING_INTERVIEW: 'Dossier validé — en attente de votre interview vidéo.',
+    APPROVED:          'Félicitations ! Votre compte est actif.',
+    SUSPENDED:         'Compte suspendu temporairement. Contactez le support.',
+    BANNED:            'Compte radié de la plateforme.',
+  };
+
+  return response.success(res, {
+    status: doctor.status,
+    message: statusMessages[doctor.status] || doctor.status,
+    doctorId: doctor.id,
+    submittedAt: doctor.createdAt,
+    updatedAt: doctor.updatedAt,
+  });
+});
+
+// POST /api/doctors/register — Alias (ancien nom)
+const registerDoctor = applyDoctor;
 
 // GET /api/doctors/me/wallet — Wallet et historique du médecin
 const getWallet = asyncHandler(async (req, res) => {
@@ -123,4 +172,4 @@ const getMyConsultations = asyncHandler(async (req, res) => {
   return response.success(res, { consultations });
 });
 
-module.exports = { getAll, getById, getMe, updateMe, registerDoctor, getWallet, getMyConsultations };
+module.exports = { getAll, getById, getMe, updateMe, applyDoctor, registerDoctor, getApplicationStatus, getWallet, getMyConsultations };

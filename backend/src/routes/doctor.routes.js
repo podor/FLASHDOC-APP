@@ -12,17 +12,27 @@ router.get('/:id', ctrl.getById);
 // Routes protégées
 router.use(authenticate);
 
-// POST /api/doctors/register — Soumettre dossier d'affiliation
-router.post('/register',
-  requireRole('DOCTOR'),
-  [
-    body('speciality').notEmpty().withMessage('Spécialité requise'),
-    body('onmcNumber').notEmpty().withMessage('Numéro ONMC requis'),
-    body('city').optional().isString(),
-  ],
-  validate,
-  ctrl.registerDoctor
-);
+// POST /api/doctors/apply — Soumettre dossier d'affiliation (onboarding app)
+// POST /api/doctors/register — Alias
+const applyValidation = [
+  body('speciality').notEmpty().withMessage('Spécialité requise'),
+  body('onmcNumber').notEmpty().withMessage('Numéro ONMC requis'),
+  body('city').optional().isString(),
+  body('experience').optional().isInt({ min: 0 }),
+  body('languages').optional().isArray(),
+  body('bio').optional().isLength({ max: 1000 }),
+  body('hospital').optional().isString(),
+  body('availableDays').optional(),
+  body('startTime').optional().isString(),
+  body('endTime').optional().isString(),
+  body('consultationsPerDay').optional().isInt({ min: 1 }),
+];
+
+router.post('/apply',    requireRole('DOCTOR'), applyValidation, validate, ctrl.applyDoctor);
+router.post('/register', requireRole('DOCTOR'), applyValidation, validate, ctrl.applyDoctor);
+
+// GET /api/doctors/application/status — Statut du dossier
+router.get('/application/status', requireRole('DOCTOR'), ctrl.getApplicationStatus);
 
 // GET /api/doctors/me/profile
 router.get('/me/profile', requireRole('DOCTOR'), ctrl.getMe);
